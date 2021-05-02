@@ -6,7 +6,8 @@ import 'package:audioplayers/audio_cache.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'coin_bloc.dart';
+import 'bloc/coin_bloc.dart';
+import 'model/coin_model.dart';
 
 void main() {
   runApp(MyApp());
@@ -45,12 +46,10 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   Timer timer;
   final String coinValue =  "Real";
-  //
-  // Future<AudioPlayer> playLocalAsset() async {
-  //   print("playLocalAsset");
-  //   AudioCache cache = new AudioCache();
-  //   return await cache.play("customsoundeffect.mp3");
-  // }
+
+  UniqueKey keyTile;
+  bool isExpanded = false;
+
 
   AudioCache audioCache = AudioCache();
 
@@ -59,56 +58,71 @@ class _MyHomePageState extends State<MyHomePage> {
     audioCache.play("customsoundeffect.mp3");
   }
 
+  void expandTile() {
+    setState(() {
+      isExpanded = true;
+      keyTile = UniqueKey();
+    });
+  }
+
+  void shrinkTile() {
+    setState(() {
+      isExpanded = false;
+      keyTile = UniqueKey();
+    });
+  }
+
+  Widget buildTile({BuildContext context, String value, DateTime timestamp}) => Theme(
+    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+    child: ExpansionTile(
+      key: keyTile,
+      initiallyExpanded: isExpanded,
+      childrenPadding: EdgeInsets.all(16).copyWith(top: 0),
+      title: Center(
+        child: Text(
+          value,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+        ),
+      ),
+      children: [
+        Text(
+          "Timestamp : ${timestamp.toIso8601String()}",
+          style: TextStyle(fontSize: 18, height: 1.4),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final CoinBloc coinBloc = BlocProvider.of<CoinBloc>(context);
 
     Timer.periodic(Duration(seconds: 5), (timer) => coinBloc.add(RandomCoinGenerateEvent.getNewCoin)) ;
-
-
-
+    
     return Scaffold(
       appBar: AppBar(title:
-        BlocBuilder<CoinBloc, List<String>>(
+        BlocBuilder<CoinBloc, List<Coin>>(
           builder:(context, count) {
-           count.length>0 && count[count.length-1] == coinValue ?  playAudio():null;
-
-            return  Text(count.length == 0 ? "" :count[count.length-1] );
-
+           count.length>0 && count[count.length-1].value == coinValue ?  playAudio():null;
+            return  Text(count.length == 0 ? "" :count[count.length-1].value );
           } ,
         )
 
       ),
-      body: BlocBuilder<CoinBloc, List<String>>(
+      body: BlocBuilder<CoinBloc, List<Coin>>(
         builder: (context, count) {
-          List <String> coins = count;
+          List <Coin> coins = count;
           return
             ListView.separated(
               itemCount: coins == null ? 0 : coins.length,
               itemBuilder: (BuildContext context, int index){
-                return
-                  ReusableCard(
-                    cardChild:  Text(coins[index]),
-                  );
+                return  buildTile(context: context,value: coins[index].value,timestamp: coins[index].timestamp);
               },
               separatorBuilder: (context,index) => Divider(),
             );
         },
       ),
-      floatingActionButton: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 5.0),
-            child: FloatingActionButton(
-              child: Icon(Icons.add),
-              onPressed: playAudio
-            ),
-          ),
 
-        ],
-      ),
     );
   }
 }
